@@ -182,8 +182,13 @@ fieldset > label {
   box-shadow: none; /* 98.css presses buttons in; nothing to press here */
 }
 
-#rateSpread {
-  width: 56px;
+.rate-band-row {
+  margin-top: 12px; /* luft mellan + Ränteändring och spannsektionen */
+}
+
+#rateMin,
+#rateMax {
+  width: 52px;
 }
 
 .warning {

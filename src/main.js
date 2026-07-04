@@ -10,6 +10,8 @@ const START_YEAR = new Date().getFullYear();
 const AMORT_RANGE = { kr: { min: 0, max: 40000, step: 100 }, pct: { min: 0, max: 10, step: 0.1 } };
 
 const fmtSEK = new Intl.NumberFormat('sv-SE', { style: 'currency', currency: 'SEK', maximumFractionDigits: 0 });
+const fmtNum = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 });
+const fmtRange = (lo, hi) => `${fmtNum.format(lo)}–${fmtSEK.format(hi)}`;
 const $ = (sel) => document.querySelector(sel);
 
 // --- State ---
@@ -24,7 +26,8 @@ function defaultScenario() {
     borrowers: 2,
     rateSegments: [{ fromYear: 0, annualRatePct: 3.5 }],
     showRateBand: false,
-    rateSpreadPct: 1,
+    rateMinPct: 2.5,
+    rateMaxPct: 4.5,
     amortMode: 'auto',
     amortSegments: [{ fromYear: 0, value: 6000, unit: 'kr' }],
   };
@@ -48,7 +51,14 @@ function loadState() {
       for (const s of parsed.scenarios) {
         delete s.incomeAnnual; // skuldkvotskravet avskaffat april 2026
         s.showRateBand = s.showRateBand === true;
-        if (!Number.isFinite(Number(s.rateSpreadPct))) s.rateSpreadPct = 1; // fanns inte i äldre sparade lägen
+        if (!Number.isFinite(Number(s.rateMinPct)) || !Number.isFinite(Number(s.rateMaxPct))) {
+          // äldre sparade lägen: översätt ± runt banan till absolut min/max
+          const rates = (Array.isArray(s.rateSegments) ? s.rateSegments : []).map((r) => Number(r?.annualRatePct) || 0);
+          const spread = Number(s.rateSpreadPct) || 1;
+          s.rateMinPct = Math.max(0, (rates.length ? Math.min(...rates) : 3.5) - spread);
+          s.rateMaxPct = (rates.length ? Math.max(...rates) : 3.5) + spread;
+        }
+        delete s.rateSpreadPct;
       }
       parsed.rules = normalizeRules(parsed.rules); // fills lagens nivåer for states saved before rules existed
       return parsed;
@@ -148,14 +158,14 @@ const charts = {
       `varav amortering ${fmtSEK.format(b.amort[m])}`,
       `varav räntenetto ${fmtSEK.format(b.interestNet[m])} (brutto ${fmtSEK.format(b.interestGross[m])})`,
     ];
-    if (b.band) lines.push(`räntespann ${fmtSEK.format(b.band.low[m])} – ${fmtSEK.format(b.band.high[m])}`);
+    if (b.band) lines.push(`räntenetto inom spannet ${fmtRange(b.band.low[m], b.band.high[m])}`);
     return lines;
   }),
   cumInterest: makeChart($('#chartCumInterest'), (ctx) => {
     const b = ctx.dataset.bolan;
     const m = ctx.dataIndex;
     const lines = [`brutto ${fmtSEK.format(b.cumInterestGross[m])}`];
-    if (b.band) lines.push(`räntespann ${fmtSEK.format(b.band.low[m])} – ${fmtSEK.format(b.band.high[m])}`);
+    if (b.band) lines.push(`inom spannet ${fmtRange(b.band.low[m], b.band.high[m])}`);
     return lines;
   }),
 };
@@ -197,40 +207,38 @@ function toBandDataset(sc, series, fillToPrev) {
 
 // --- Recalculation (all input events funnel here, rAF-coalesced) ---
 
-// Exakt värsta/bästa-fall: kostnaden är monoton i räntan, så hela banan
-// skiftad till spannets kanter omsluter varje räntebana som håller sig inom
-// spannet. (Skulden är oberoende av räntan — rak amortering, räntan
-// kapitaliseras aldrig — så payoff och skuldkurva ändras inte.)
-function shiftRates(sc, delta) {
-  return {
-    ...sc,
-    rateSegments: sc.rateSegments.map((s) => ({ ...s, annualRatePct: (Number(s.annualRatePct) || 0) + delta })),
-  };
-}
+// Exakt värsta/bästa-fall: kostnaden är monoton i räntan, så konstant min
+// respektive max omsluter varje räntebana som håller sig inom spannet.
+// Bandet är korridoren [min, max] och inget annat — går räntebanan utanför
+// lämnar linjen bandet, med avsikt: då motsäger banan det egna spannet.
+// (Skulden är oberoende av räntan — rak amortering, räntan kapitaliseras
+// aldrig — så payoff och skuldkurva ändras inte.)
+const atFlatRate = (sc, pct) => ({ ...sc, rateSegments: [{ fromYear: 0, annualRatePct: pct }] });
 
 function recalc() {
   const rules = normalizeRules(state.rules);
   const results = state.scenarios.map((sc) => {
     const res = simulate(sc, { startYear: START_YEAR, rules });
-    const spread = Number(sc.rateSpreadPct) || 0;
-    const band =
-      sc.showRateBand && spread > 0
-        ? {
-            low: simulate(shiftRates(sc, -spread), { startYear: START_YEAR, rules }),
-            high: simulate(shiftRates(sc, spread), { startYear: START_YEAR, rules }),
-          }
-        : null;
+    const band = sc.showRateBand
+      ? {
+          low: simulate(atFlatRate(sc, Number(sc.rateMinPct) || 0), { startYear: START_YEAR, rules }),
+          high: simulate(atFlatRate(sc, Number(sc.rateMaxPct) || 0), { startYear: START_YEAR, rules }),
+        }
+      : null;
     return { sc, res, band };
   });
   const act = results.find((r) => r.sc.id === state.activeId);
 
   const seriesFor = { balance: 'balance', payment: 'paymentNet', cumInterest: 'cumInterestNet' };
+  // tooltipen visar spannet för det som faktiskt varierar — räntan, inte
+  // totalen (amorteringen är konstant över spannet); bandet ritas på totalen
+  const bandTipFor = { payment: 'interestNet', cumInterest: 'cumInterestNet' };
   for (const [key, chart] of Object.entries(charts)) {
     const series = seriesFor[key];
     chart.data.datasets = results.flatMap(({ sc, res, band }) => {
       const main = toDataset(sc, res, res[series]);
       if (!band || key === 'balance') return [main]; // skuldkurvan påverkas inte av räntan
-      main.bolan.band = { low: band.low[series], high: band.high[series] };
+      main.bolan.band = { low: band.low[bandTipFor[key]], high: band.high[bandTipFor[key]] };
       return [toBandDataset(sc, band.low[series], false), toBandDataset(sc, band.high[series], true), main];
     });
     chart.options.plugins.legend.display = results.length > 1;
@@ -446,22 +454,30 @@ bindSegmentEditor({
   },
 });
 
-// --- Räntespann (per scenario: kryssruta + ± i procentenheter) ---
+// --- Räntespann (per scenario: kryssruta + förväntad min/max i %) ---
 
 $('#rateBandToggle').addEventListener('change', (e) => {
   active().showRateBand = e.target.checked;
-  $('#rateSpread').disabled = !e.target.checked;
+  $('#rateMin').disabled = !e.target.checked;
+  $('#rateMax').disabled = !e.target.checked;
   $('#rateBandHint').hidden = !e.target.checked;
   scheduleRecalc();
 });
 
-$('#rateSpread').addEventListener('input', (e) => {
-  active().rateSpreadPct = Math.max(0, Number(e.target.value) || 0);
-  scheduleRecalc();
-});
-$('#rateSpread').addEventListener('change', (e) => {
-  e.target.value = active().rateSpreadPct; // blur med tomt/skräp: återställ
-});
+for (const [id, key] of [['#rateMin', 'rateMinPct'], ['#rateMax', 'rateMaxPct']]) {
+  $(id).addEventListener('input', (e) => {
+    active()[key] = Math.max(0, Number(e.target.value) || 0);
+    scheduleRecalc();
+  });
+  // blur: tomt/skräp återställs, och min får inte överstiga max
+  $(id).addEventListener('change', () => {
+    const sc = active();
+    sc.rateMinPct = Math.min(sc.rateMinPct, sc.rateMaxPct);
+    $('#rateMin').value = sc.rateMinPct;
+    $('#rateMax').value = sc.rateMaxPct;
+    scheduleRecalc();
+  });
+}
 
 bindSegmentEditor({
   container: $('#amortRows'),
@@ -675,8 +691,10 @@ function syncControls() {
   $('#borrowers').value = String(sc.borrowers);
   $('#scenarioName').value = sc.name;
   $('#rateBandToggle').checked = sc.showRateBand === true;
-  $('#rateSpread').value = sc.rateSpreadPct;
-  $('#rateSpread').disabled = sc.showRateBand !== true;
+  $('#rateMin').value = sc.rateMinPct;
+  $('#rateMax').value = sc.rateMaxPct;
+  $('#rateMin').disabled = sc.showRateBand !== true;
+  $('#rateMax').disabled = sc.showRateBand !== true;
   $('#rateBandHint').hidden = sc.showRateBand !== true;
   $('#amortModeAuto').checked = sc.amortMode === 'auto';
   $('#amortModeManual').checked = sc.amortMode === 'manual';

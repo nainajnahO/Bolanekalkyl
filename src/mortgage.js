@@ -53,13 +53,15 @@ export function normalizeRules(rules) {
 // Defensive sanitization: garbage in → clamped scenario out. Never throws.
 export function normalizeScenario(sc) {
   sc = sc ?? {};
+  const rateMaxPct = clampNum(sc.rateMaxPct, 0, 100, 0);
   return {
     ...sc,
     propertyValue: clampNum(sc.propertyValue, 0, 100_000_000),
     loanAmount: clampNum(sc.loanAmount, 0, 100_000_000),
     borrowers: Math.round(clampNum(sc.borrowers, 1, 4, 2)),
     showRateBand: sc.showRateBand === true,
-    rateSpreadPct: clampNum(sc.rateSpreadPct, 0, 20, 0), // ± procentenheter runt räntebanan
+    rateMinPct: Math.min(clampNum(sc.rateMinPct, 0, 100, 0), rateMaxPct), // förväntat räntespann, min ≤ max
+    rateMaxPct,
     amortMode: sc.amortMode === 'manual' ? 'manual' : 'auto',
     rateSegments: normalizeSegments(
       sc.rateSegments,

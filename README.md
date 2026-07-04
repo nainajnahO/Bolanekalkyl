@@ -8,9 +8,11 @@ Räntan och amorteringen kan ändras vid valfria år ("3,5 % nu, 4,5 % från år
 och flera scenarier kan jämföras sida vid sida i samma diagram. Allt sparas i
 webbläsaren. Utseendet är Windows 98 — med flit.
 
-Varje scenario kan också visa ett räntespann (±) som ett skuggat band i
-kostnadsdiagrammen. Bandets kanter är bästa och sämsta möjliga utfall: så länge
-räntan håller sig inom spannet håller sig kostnaden inom bandet, varje månad.
+Varje scenario kan också visa ett räntespann: ange lägsta och högsta förväntade
+ränta, så ritas ett skuggat band i kostnadsdiagrammen. Bandets kanter är bästa
+och sämsta möjliga utfall — så länge räntan håller sig inom spannet håller sig
+kostnaden inom bandet, varje månad. Går räntebanan utanför spannet lämnar
+linjen bandet — det är med avsikt: då motsäger banan dina egna förväntningar.
 Det är alltså inte ett sannolikhetsintervall — det säger inget om vad som är
 troligt, bara om gränserna. Skulden och slutbetalningsdatumet påverkas inte av
 räntan: amorteringen styrs av lagkravet eller din egen plan, och räntan läggs
