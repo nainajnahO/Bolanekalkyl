@@ -225,6 +225,43 @@ fieldset > label {
   white-space: nowrap;
 }
 
+.stat-help {
+  position: relative;
+  font-size: 11px;
+  color: #555;
+  vertical-align: super;
+  cursor: help;
+  padding: 0 2px;
+}
+
+.stat-help:focus {
+  outline: 1px dotted #555;
+}
+
+/* Win98-infotip (samma recept som #rulesModifiedFlag) — inbyggda title-tips
+   kan inte stylas och ser ut som värd-OS:et, inte som temat */
+.infotip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: -8px;
+  width: 240px;
+  background: #ffffe1;
+  border: 1px solid #000;
+  color: #000;
+  font-size: 11px;
+  font-weight: normal;
+  text-align: left;
+  white-space: normal;
+  padding: 4px 6px;
+  z-index: 10;
+}
+
+.stat-help:hover .infotip,
+.stat-help:focus .infotip {
+  display: block;
+}
+
 .chart-panel {
   background: #fff;
   padding: 8px 12px 10px;

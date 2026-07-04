@@ -248,6 +248,11 @@ function recalc() {
   $('#statMonthly').textContent = fmtSEK.format(act.res.paymentNet[0] ?? 0);
   $('#statAmort').textContent = fmtSEK.format(act.res.amort[0] ?? 0);
   $('#statInterest').textContent = fmtSEK.format(act.res.interestNet[0] ?? 0);
+  $('#interestHelp').textContent =
+    `Bruttoräntan är ${fmtSEK.format(act.res.interestGross[0] ?? 0)}/mån. ` +
+    `Via ränteavdraget får du tillbaka ${rules.deductionRatePct} % av räntekostnaden ` +
+    `på skatten (${rules.deductionRateAbovePct} % över ${fmtNum.format(rules.deductionCapPerPerson)} kr ` +
+    `per person och år), så netto blir ${fmtSEK.format(act.res.interestNet[0] ?? 0)}.`;
   $('#statPayoff').textContent = keyFigures(act.res).payoffLabel ?? '—';
 
   const min = legalMinMonthly(act.sc.loanAmount, act.sc, rules);
