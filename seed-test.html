@@ -1,0 +1,90 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>pending</title>
+<body style="margin:0">
+<iframe id="f" style="width:1480px;height:1100px;border:0"></iframe>
+<script>
+  const state = {
+    version: 1,
+    activeId: 'a',
+    scenarios: [
+      {
+        id: 'a', name: 'Med spann', colorIndex: 0,
+        propertyValue: 4000000, loanAmount: 3400000, borrowers: 2,
+        rateSegments: [{ fromYear: 0, annualRatePct: 3.5 }, { fromYear: 5, annualRatePct: 4.5 }],
+        showRateBand: true, rateSpreadPct: 1,
+        amortMode: 'manual', amortSegments: [{ fromYear: 0, value: 8000, unit: 'kr' }],
+      },
+      {
+        id: 'b', name: 'Utan spann', colorIndex: 1,
+        propertyValue: 4000000, loanAmount: 3400000, borrowers: 2,
+        rateSegments: [{ fromYear: 0, annualRatePct: 4.5 }],
+        showRateBand: false, rateSpreadPct: 1,
+        amortMode: 'auto', amortSegments: [{ fromYear: 0, value: 6000, unit: 'kr' }],
+      },
+    ],
+  };
+  localStorage.setItem('bolan-dashboard', JSON.stringify(state));
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const asserts = [];
+  const ok = (name, cond) => asserts.push(`${name}:${cond ? 'PASS' : 'FAIL'}`);
+
+  // Chart.js-canvasen är transparent (vitt kommer från panelens CSS), så
+  // bandet läses som lågalfa rgba(42,120,214,~38). Rutnät/linjer är opaka.
+  function countBandPixels(canvas) {
+    const ctx = canvas.getContext('2d');
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let n = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], b = data[i + 2], a = data[i + 3];
+      if (a >= 20 && a <= 80 && b > r + 20) n++;
+    }
+    return n;
+  }
+
+  const f = document.getElementById('f');
+  f.onload = async () => {
+    const w = f.contentWindow;
+    const d = f.contentDocument;
+    w.requestAnimationFrame = (cb) => setTimeout(cb, 16);
+    await sleep(200);
+
+    ok('toggle checked', d.getElementById('rateBandToggle').checked === true);
+    ok('spread value 1', d.getElementById('rateSpread').value === '1');
+    ok('spread enabled', !d.getElementById('rateSpread').disabled);
+    ok('hint visible', !d.getElementById('rateBandHint').hidden);
+
+    const pxOn = countBandPixels(d.getElementById('chartPayment'));
+    const pxBalance = countBandPixels(d.getElementById('chartBalance'));
+    ok('band drawn on payment chart', pxOn > 500);
+    ok('no band on balance chart', pxBalance < 50);
+
+    // toggla av → band borta + sparas
+    const t = d.getElementById('rateBandToggle');
+    t.checked = false;
+    t.dispatchEvent(new Event('change', { bubbles: true }));
+    await sleep(450);
+    const stored1 = JSON.parse(w.localStorage.getItem('bolan-dashboard'));
+    ok('stored showRateBand=false', stored1.scenarios[0].showRateBand === false);
+    ok('spread disabled when off', d.getElementById('rateSpread').disabled);
+    const pxOff = countBandPixels(d.getElementById('chartPayment'));
+    ok('band gone after toggle', pxOff < 50);
+
+    // toggla på igen + ändra spannet → sparas
+    t.checked = true;
+    t.dispatchEvent(new Event('change', { bubbles: true }));
+    const sp = d.getElementById('rateSpread');
+    sp.value = '1.5';
+    sp.dispatchEvent(new Event('input', { bubbles: true }));
+    await sleep(450);
+    const stored2 = JSON.parse(w.localStorage.getItem('bolan-dashboard'));
+    ok('stored showRateBand=true', stored2.scenarios[0].showRateBand === true);
+    ok('stored spread 1.5', stored2.scenarios[0].rateSpreadPct === 1.5);
+    ok('band back', countBandPixels(d.getElementById('chartPayment')) > 500);
+
+    document.title = asserts.join(' | ') + ` | pxOn=${pxOn} pxOff=${pxOff}`;
+  };
+  f.src = 'http://localhost:5174/';
+</script>
+</body>

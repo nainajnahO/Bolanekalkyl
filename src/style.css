@@ -1,0 +1,329 @@
+/* Layout only — 98.css supplies widget chrome and typography. */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 12px;
+  background: teal;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.app-header h1 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#rulesModifiedFlag {
+  background: #ffffe1;
+  border: 1px solid #000;
+  color: #000;
+  font-size: 11px;
+  padding: 1px 6px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 400px) 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.layout > * {
+  min-width: 0; /* grid items default to min-width:auto and refuse to shrink below content */
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Controls column */
+
+.scenario-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.scenario-bar button[aria-pressed='true'] {
+  font-weight: 700;
+}
+
+.chip {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  vertical-align: baseline;
+}
+
+.scenario-actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.name-row input {
+  flex: 1;
+}
+
+fieldset {
+  margin: 0 0 12px;
+  min-inline-size: 0; /* fieldsets default to min-content and refuse to shrink */
+}
+
+fieldset label {
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.pair {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 8px;
+}
+
+.pair input[type='range'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.pair input[type='number'] {
+  width: 100px;
+}
+
+.segment-rows {
+  margin-bottom: 6px;
+}
+
+.segment-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.segment-row label {
+  white-space: nowrap;
+}
+
+.segment-row .seg-year {
+  width: 44px;
+}
+
+.segment-row .seg-range {
+  flex: 1;
+  min-width: 30px;
+}
+
+.segment-row .seg-val {
+  width: 64px;
+}
+
+.segment-row .seg-del,
+.segment-row .seg-del-spacer {
+  flex: none;
+  width: 22px;
+  min-width: 0; /* 98.css gives buttons min-width 75px otherwise */
+  padding: 0;
+}
+
+/* borderless red cursive ✗ — user's pick over the beveled 98.css button */
+.segment-row .seg-del {
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: #c00;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 15px;
+}
+
+.segment-row .seg-del:hover {
+  color: #800;
+  font-weight: 700;
+}
+
+.segment-row .seg-del:focus {
+  outline: 1px dotted #c00;
+  outline-offset: 1px;
+}
+
+.segment-row .seg-del:not(:disabled):active {
+  box-shadow: none; /* 98.css presses buttons in; nothing to press here */
+}
+
+#rateSpread {
+  width: 56px;
+}
+
+.warning {
+  color: #a40000;
+  font-size: 12px;
+  margin: 2px 0;
+}
+
+.hint {
+  color: #555;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+/* Output column */
+
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.stat-label {
+  display: block;
+  font-size: 11px;
+  color: #555;
+}
+
+.stat-value {
+  font-size: 19px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chart-panel {
+  background: #fff;
+  padding: 8px 12px 10px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.chart-panel h2 {
+  font-size: 12px;
+  font-weight: 600;
+  color: #444;
+  margin: 0 0 4px;
+}
+
+.chart-box {
+  position: relative;
+  height: 200px;
+}
+
+.chart-box.tall {
+  height: 240px;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 1200px) {
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.table-scroll {
+  overflow-x: auto; /* 7 nowrap columns; scroll here, never the whole page */
+}
+
+#comparisonTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  background: #fff;
+  margin-bottom: 8px;
+}
+
+#comparisonTable th,
+#comparisonTable td {
+  padding: 4px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+#comparisonTable th:first-child,
+#comparisonTable td:first-child {
+  text-align: left;
+}
+
+#comparisonTable thead th {
+  border-bottom: 1px solid #c9c7c0;
+  font-weight: 600;
+}
+
+.footnote {
+  font-size: 11px;
+  color: #222;
+  margin: 4px 0 0;
+  max-width: 80ch;
+}
+
+/* Regler: floating non-modal window. The UA centers an open dialog at its
+   static position (absolute) — override to fixed; not in the top layer, so it
+   needs its own z-index. .window supplies the Win98 chrome. */
+#rulesDialog {
+  position: fixed;
+  top: 84px;
+  right: 16px;
+  left: auto;
+  margin: 0;
+  border: none;
+  padding: 0;
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 100px);
+  overflow: auto;
+  z-index: 100;
+}
+
+@media (max-width: 900px) {
+  #rulesDialog {
+    top: 56px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+}
+
+#rulesDialog .title-bar {
+  touch-action: none; /* touch drags move the window, not the page */
+  user-select: none;
+}
+
+#rulesDialog input[type='number'] {
+  width: 64px;
+}
+
+#rulesDialog input[data-rule='deductionCapPerPerson'] {
+  width: 90px;
+}

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bolånekalkyl</title>
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Bolånekalkyl</h1>
+      <div class="app-header-actions">
+        <span id="rulesModifiedFlag" hidden>⚠ Ändrade regler</span>
+        <button id="rulesButton" type="button">Regler…</button>
+        <button id="resetAll" type="button">Återställ allt</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="window controls">
+        <div class="title-bar"><div class="title-bar-text">Parametrar</div></div>
+        <div class="window-body">
+          <div class="scenario-bar" id="scenarioBar"></div>
+          <div class="scenario-actions">
+            <button id="addScenario" type="button">+ Nytt scenario</button>
+            <button id="deleteScenario" type="button">Ta bort</button>
+          </div>
+          <div class="field-row name-row">
+            <label for="scenarioName">Namn</label>
+            <input id="scenarioName" type="text" maxlength="30" />
+          </div>
+
+          <fieldset>
+            <legend>Bostad &amp; lån</legend>
+            <label for="propertyValueNum">Bostadens värde</label>
+            <div class="pair">
+              <input type="range" id="propertyValueRange" min="500000" max="15000000" step="50000" aria-label="Bostadens värde" />
+              <input type="number" id="propertyValueNum" min="0" step="50000" />
+              <span class="unit">kr</span>
+            </div>
+            <label for="loanAmountNum">Lånebelopp</label>
+            <div class="pair">
+              <input type="range" id="loanAmountRange" min="0" max="15000000" step="25000" aria-label="Lånebelopp" />
+              <input type="number" id="loanAmountNum" min="0" step="25000" />
+              <span class="unit">kr</span>
+            </div>
+            <p class="warning" id="bolanetakWarning" hidden>
+              Över bolånetaket (<span id="bolanetakPctText">90</span> % av bostadens värde).
+              <a href="#" class="rule-link" data-rule="bolanetakPct">[ändra]</a>
+            </p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Hushåll</legend>
+            <div class="field-row">
+              <label for="borrowers">Låntagare som delar räntan</label>
+              <select id="borrowers">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Ränta</legend>
+            <div id="rateRows" class="segment-rows"></div>
+            <button id="addRateSegment" type="button">+ Ränteändring</button>
+            <p class="hint" id="rateDuplicateNote" hidden>Två ändringar samma år — den nedre gäller.</p>
+            <div class="field-row">
+              <input type="checkbox" id="rateBandToggle" />
+              <label for="rateBandToggle">Visa räntespann</label>
+              <span class="unit">±</span>
+              <input type="number" id="rateSpread" min="0" max="20" step="0.1" aria-label="Räntespann i procentenheter" />
+              <span class="unit">%-enheter</span>
+            </div>
+            <p class="hint" id="rateBandHint" hidden>
+              Bandet visar bästa/sämsta utfall i kostnadsdiagrammen om räntan håller sig inom
+              spannet. Skulden och slutdatumet påverkas inte av räntan.
+            </p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Amortering</legend>
+            <div class="field-row">
+              <input type="radio" name="amortMode" id="amortModeAuto" value="auto" />
+              <label for="amortModeAuto">Följ lagkravet</label>
+            </div>
+            <div class="field-row">
+              <input type="radio" name="amortMode" id="amortModeManual" value="manual" />
+              <label for="amortModeManual">Egen plan</label>
+            </div>
+            <p class="hint">
+              <span id="legalMinReadout"></span>
+              <a href="#" class="rule-link" data-rule="amortRateHighPct">[ändra]</a>
+            </p>
+            <div id="amortManualSection" hidden>
+              <div id="amortRows" class="segment-rows"></div>
+              <button id="addAmortSegment" type="button">+ Ändring</button>
+              <p class="hint" id="amortDuplicateNote" hidden>Två ändringar samma år — den nedre gäller.</p>
+              <div id="amortWarnings"></div>
+            </div>
+          </fieldset>
+        </div>
+      </aside>
+
+      <section class="window output">
+        <div class="title-bar"><div class="title-bar-text">Resultat</div></div>
+        <div class="window-body">
+          <div class="stat-strip">
+            <div class="stat">
+              <span class="stat-label">Månadskostnad nu (netto)</span>
+              <span class="stat-value" id="statMonthly">–</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">varav amortering</span>
+              <span class="stat-value" id="statAmort">–</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">varav räntenetto</span>
+              <span class="stat-value" id="statInterest">–</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Slutbetald</span>
+              <span class="stat-value" id="statPayoff">–</span>
+            </div>
+          </div>
+
+          <div class="chart-panel sunken-panel">
+            <h2>Skuld</h2>
+            <div class="chart-box tall"><canvas id="chartBalance"></canvas></div>
+          </div>
+          <div class="chart-grid">
+            <div class="chart-panel sunken-panel">
+              <h2>Månadskostnad (netto)</h2>
+              <div class="chart-box"><canvas id="chartPayment"></canvas></div>
+            </div>
+            <div class="chart-panel sunken-panel">
+              <h2>Ackumulerad räntekostnad (netto)</h2>
+              <div class="chart-box"><canvas id="chartCumInterest"></canvas></div>
+            </div>
+          </div>
+
+          <div class="table-scroll">
+          <table id="comparisonTable">
+            <thead>
+              <tr>
+                <th>Scenario</th>
+                <th>Månadskostnad nu</th>
+                <th>År 5</th>
+                <th>År 10</th>
+                <th>Slutbetald</th>
+                <th>Total ränta (netto)</th>
+                <th>Total ränta (brutto)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          </div>
+
+          <p class="footnote">
+            Standardvärdena följer lagen som gäller från 1 april 2026: bolånetak 90&nbsp;%, amorteringskrav
+            2&nbsp;%/år över 70&nbsp;% belåningsgrad och 1&nbsp;%/år över 50&nbsp;% (skuldkvotskravet är
+            avskaffat), ränteavdrag 30&nbsp;% upp till 100&nbsp;000&nbsp;kr per person och år och 21&nbsp;%
+            därutöver. Alla regelvärden kan ändras under Regler. Förenklingar: amorteringskravet räknas om
+            månadsvis på aktuell skuld mot konstant bostadsvärde — banker omvärderar högst vart femte år.
+            Lånet antas starta i januari. Ränteavdraget antas inte begränsas av betald skatt. Månadskostnaden
+            avser lånet; drift, avgift och försäkring ingår inte.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="rulesDialog" class="window" aria-labelledby="rulesDialogTitle">
+      <div class="title-bar">
+        <div class="title-bar-text" id="rulesDialogTitle">Regler</div>
+        <div class="title-bar-controls">
+          <button type="button" class="close" aria-label="Stäng" id="rulesClose"></button>
+        </div>
+      </div>
+      <div class="window-body">
+        <fieldset>
+          <legend>Bolånetak</legend>
+          <div class="field-row">
+            <label for="ruleBolanetak">Max lån</label>
+            <input type="number" id="ruleBolanetak" data-rule="bolanetakPct" min="0" max="100" step="1" />
+            <span class="unit">% av värdet</span>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Amorteringskrav</legend>
+          <div class="field-row">
+            <label for="ruleAmortLtvHigh">Belåningsgrad över</label>
+            <input type="number" id="ruleAmortLtvHigh" data-rule="amortLtvHighPct" min="0" max="100" step="1" />
+            <span class="unit">% →</span>
+            <input type="number" data-rule="amortRateHighPct" min="0" max="100" step="0.1" aria-label="Amorteringskrav, övre nivån" />
+            <span class="unit">%/år</span>
+          </div>
+          <div class="field-row">
+            <label for="ruleAmortLtvLow">Belåningsgrad över</label>
+            <input type="number" id="ruleAmortLtvLow" data-rule="amortLtvLowPct" min="0" max="100" step="1" />
+            <span class="unit">% →</span>
+            <input type="number" data-rule="amortRateLowPct" min="0" max="100" step="0.1" aria-label="Amorteringskrav, nedre nivån" />
+            <span class="unit">%/år</span>
+          </div>
+          <p class="hint">Under den lägre gränsen: inget krav.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Ränteavdrag</legend>
+          <div class="field-row">
+            <label for="ruleDeductionRate">Avdrag</label>
+            <input type="number" id="ruleDeductionRate" data-rule="deductionRatePct" min="0" max="100" step="1" />
+            <span class="unit">% upp till taket</span>
+          </div>
+          <div class="field-row">
+            <label for="ruleDeductionCap">Tak</label>
+            <input type="number" id="ruleDeductionCap" data-rule="deductionCapPerPerson" min="0" step="10000" />
+            <span class="unit">kr/person och år</span>
+          </div>
+          <div class="field-row">
+            <label for="ruleDeductionAbove">Avdrag därutöver</label>
+            <input type="number" id="ruleDeductionAbove" data-rule="deductionRateAbovePct" min="0" max="100" step="1" />
+            <span class="unit">%</span>
+          </div>
+        </fieldset>
+
+        <button id="rulesResetLaw" type="button">Återställ till lagens nivåer</button>
+      </div>
+    </dialog>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
