@@ -97,7 +97,10 @@ fieldset {
   min-inline-size: 0; /* fieldsets default to min-content and refuse to shrink */
 }
 
-fieldset label {
+/* Only the standalone labels above sliders — labels inside .field-row must
+   keep 98.css inline-flex: kryssrutans ::after saknar top och centreras via
+   flex static position, display:inline-block skickar bocken en rad ner */
+fieldset > label {
   display: inline-block;
   margin-top: 4px;
 }
