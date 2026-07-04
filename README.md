@@ -1,5 +1,7 @@
 # Bolånekalkyl
 
+https://nainajnaho.github.io/Bolanekalkyl/
+
 En kalkylator för att utforska hur ett bolån utvecklas över åren. Ändra ett värde
 och se direkt hur skulden, månadskostnaden och den totala räntekostnaden påverkas.
 Räntan och amorteringen kan ändras vid valfria år ("3,5 % nu, 4,5 % från år 3"),
